@@ -1,119 +1,165 @@
-import * as fs from 'fs/promises';
+import * as fs from 'fs';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
 import markdownItAnchor from 'markdown-it-anchor';
 import * as jsdom from 'jsdom';
-import puppeteer from 'puppeteer';
 import mime from 'mime';
+import parser from "html-pdf-node";
 
 async function fileToBase64(filePath: string): Promise<string> {
-  const data = await fs.readFile(filePath);
-  const mimeType = mime.getType(filePath) || 'application/octet-stream';
-  return `data:${mimeType};base64,${data.toString('base64')}`;
+	const data = await fs.readFileSync(filePath);
+	const mimeType = mime.getType(filePath) || 'application/octet-stream';
+	return `data:${mimeType};base64,${data.toString('base64')}`;
 }
 
 function createHtmlDocument(body: string, title: string) {
-  return `<!doctype html>
-<html>
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${escapeHtml(title)}</title>
-<style>
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 24px; }
-  img { max-width: 100%; height: auto; }
-  pre { background:#f6f8fa; padding:12px; overflow:auto }
-  code { background:#f3f3f3; padding:2px 4px; border-radius:4px }
-  a { color: #0366d6 }
-</style>
-</head>
-<body>
-${body}
-</body>
-</html>`;
+	return `<!doctype html>
+		<html>
+		<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width,initial-scale=1">
+		<title>${escapeHtml(title)}</title>
+		<style>
+		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 24px; }
+		img { max-width: 100%; height: auto; }
+		pre { background:#f6f8fa; padding:12px; overflow:auto }
+		code { background:#f3f3f3; padding:2px 4px; border-radius:4px }
+		a { color: #0366d6 }
+		.break-page {break-after: page; page-break-after: always;}
+		</style>
+		</head>
+		<body>
+		${body}
+		</body>
+		</html>`;
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>\\"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' } as any)[c]);
+	return s.replace(/[&<>\\"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' } as any)[c]);
 }
 
-export async function convertMarkdownFileToPdf(mdPath: string): Promise<string> {
-  const mdDir = path.dirname(mdPath);
-  const mdText = await fs.readFile(mdPath, 'utf-8');
+/**
+ * 遞迴讀取 markdown，並展開相對連結
+ * @param filePath 檔案路徑
+ * @param idMapping filePath => id
+ * @param id 編號
+ */
+async function loadFile(filePath: string, idMapping: Record<string, number> = {}, id: number = 0): Promise<string> {
+	if (!fs.existsSync(filePath)) {
+		return '';
+	}
+	const base = Object.keys(idMapping).length;
+	const isRoot = id === 0;
+	const mdDir = path.dirname(filePath);
+	const raw = fs.readFileSync(filePath, 'utf-8');
+	const md = new MarkdownIt({
+		html: true,
+		linkify: true
+	}).use(markdownItAnchor, {
+		permalink: false
+	});
+	const html = md.render(raw);
+	const dom = new jsdom.JSDOM(html);
+	const document = dom.window.document;
+	await (async function (document) {
+		const elementList = document.querySelectorAll("img");
+		for (let i = 0; i < elementList.length; i += 1) {
+			const element: HTMLImageElement = elementList[i];
+			const src = element.getAttribute('src');
+			// ignore img tag if src is undefined
+			if (typeof src !== "string") {
+				continue;
+			}
+			// src is base64 string
+			else if (/^data:/.test(src)) {
+				continue;
+			}
+			// handle http(s) images: fetch and embed as base64
+			else if (/^(https?:)?\/\//.test(src)) {
+				try {
+					const response = await fetch(src);
+					if (!response.ok) throw new Error(`Failed to fetch image: ${src}`);
+					const buffer = Buffer.from(await response.arrayBuffer());
+					const mimeType = response.headers.get('content-type') || 'application/octet-stream';
+					const dataUrl = `data:${mimeType};base64,${buffer.toString('base64')}`;
+					element.setAttribute('src', dataUrl);
+				} catch (e) {
+					// ignore remote image if fetch failure
+					continue;
+				}
 
-  const md = new MarkdownIt({ html: true, linkify: true })
-    .use(markdownItAnchor, { permalink: false });
+			}
 
-  let html = md.render(mdText);
+			let imgPath = src;
+			if (!path.isAbsolute(imgPath)) {
+				imgPath = path.resolve(mdDir, imgPath);
+			}
+			try {
+				const dataUrl = await fileToBase64(imgPath);
+				element.setAttribute('src', dataUrl);
+			} catch (e) {
+			}
 
-  const dom = new jsdom.JSDOM(html);
-  const document = dom.window.document;
+		}
+	})(document);
+	const fileList: string[] = [];
+	document.querySelectorAll("a")
+		.forEach(function (element: HTMLAnchorElement) {
+			let href = element.getAttribute('href');
+			if (href === null) {
+				return;
+			}
+			if (!path.isAbsolute(href)) {
+				href = path.join(mdDir, href);
+			}
+			if (!fs.existsSync(href)) {
+				return;
+			}
+			let linkId: number | undefined = idMapping[href];
+			if (typeof linkId === "undefined") {
+				linkId = Object.keys(idMapping).length + 1;
+				fileList.push(href);
+				idMapping[href] = linkId;
+			}
+			element.setAttribute(`href`, `#id${linkId}`);
+		});
 
-  // embed images
-  const imgElements = Array.from(document.querySelectorAll('img')) as HTMLImageElement[];
-  for (const img of imgElements) {
-    const src = img.getAttribute('src') || '';
-    if (!src) continue;
-    if (/^data:/.test(src) || /^(https?:)?\\/\\//.test(src)) continue;
+	const result: string[] = await (async function (list) {
+		const result: string[] = [];
+		for (let i = 0; i < list.length; i += 1) {
+			const filePath = list[i];
+			const content = await loadFile(filePath, idMapping, base + i + 1);
+			result.push(content);
+		}
+		return result;
+	})([...fileList]);
+	return [
+		`<div id="id${id}">${document.body.innerHTML}</div>`,
+		...result
+	].join(`<div class="break-page"></div>`);
+}
 
-    let imgPath = src;
-    if (!path.isAbsolute(imgPath)) imgPath = path.resolve(mdDir, imgPath);
-
-    try {
-      const dataUrl = await fileToBase64(imgPath);
-      img.setAttribute('src', dataUrl);
-    } catch (e) {
-      const warn = document.createElement('div');
-      warn.style.color = 'red';
-      warn.textContent = `⚠️ Failed to embed image: ${src}`;
-      img.parentNode?.insertBefore(warn, img.nextSibling);
-    }
-  }
-
-  // ensure headings have ids
-  const headings = Array.from(document.querySelectorAll('h1,h2,h3,h4,h5,h6')) as HTMLElement[];
-  for (const h of headings) {
-    if (!h.id) {
-      const id = h.textContent?.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-') || '';
-      h.id = id;
-    }
-  }
-
-  // normalize links
-  const anchorElements = Array.from(document.querySelectorAll('a')) as HTMLAnchorElement[];
-  for (const a of anchorElements) {
-    const href = a.getAttribute('href') || '';
-    if (!href) continue;
-    if (/^(https?:|mailto:|tel:)/.test(href)) continue;
-
-    const [targetPathPart, hashPart] = href.split('#');
-    if (targetPathPart && targetPathPart.endsWith('.md')) {
-      const targetFull = path.isAbsolute(targetPathPart) ? targetPathPart : path.resolve(mdDir, targetPathPart);
-      let anchor = '';
-      if (path.resolve(targetFull) === path.resolve(mdPath)) {
-        anchor = hashPart ? `#${hashPart}` : '#';
-      } else {
-        const base = path.basename(targetFull, '.md');
-        anchor = hashPart ? `#${base}-${hashPart}` : `#${base}`;
-      }
-      a.setAttribute('href', anchor);
-      continue;
-    }
-
-    if (/^#/.test(href)) continue;
-  }
-
-  const finalHtml = createHtmlDocument(document.body.innerHTML, path.basename(mdPath));
-
-  const browser = await puppeteer.launch({ args: ['--no-sandbox', '--disable-setuid-sandbox'] });
-  try {
-    const page = await browser.newPage();
-    await page.setContent(finalHtml, { waitUntil: 'networkidle0' });
-
-    const pdfPath = mdPath.replace(/\\.md$/, '') + '.pdf';
-    await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
-    return pdfPath;
-  } finally {
-    await browser.close();
-  }
+/**
+ * Converts a Markdown file to a PDF file.
+ *
+ * This function reads a Markdown file, renders it to HTML, embeds all images (local and remote) as base64,
+ * normalizes links, ensures headings have IDs, and then generates a PDF using Puppeteer.
+ *
+ * - Local and remote images are embedded as base64 data URLs.
+ * - Headings (h1-h6) are assigned IDs if missing.
+ * - Markdown links to other `.md` files are normalized for PDF navigation.
+ *
+ * @param mdPath - The absolute path to the Markdown file to convert.
+ * @returns A promise that resolves to the absolute path of the generated PDF file.
+ * @throws If reading the Markdown file or generating the PDF fails.
+ */
+export async function convert(mdPath: string, pdfPath: string): Promise<void> {
+	const pdfDir = path.dirname(pdfPath);
+	const html = await loadFile(mdPath);
+	const finalHtml = createHtmlDocument(html, path.basename(mdPath));
+	fs.writeFileSync(path.join(pdfDir, `index.html`), finalHtml);
+	const buffer: any = await parser.generatePdf({
+		content: finalHtml
+	}, { format: 'A4' });
+	fs.writeFileSync(pdfPath, buffer);
 }
