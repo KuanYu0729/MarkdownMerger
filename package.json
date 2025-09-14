@@ -8,7 +8,7 @@
 	},
 	"version": "0.0.4",
 	"engines": {
-		"vscode": "^1.60.0"
+		"vscode": "^1.90.0"
 	},
 	"icon": "./assets/icon.png",
 	"keywords": [
@@ -30,24 +30,21 @@
 		"test": "node ./out/test/runTest.js"
 	},
 	"devDependencies": {
-		"@types/html-pdf-node": "^1.0.2",
 		"@types/jsdom": "^21.1.7",
 		"@types/mime": "^3.0.4",
 		"@types/node": "^16.11.7",
 		"@types/vscode": "^1.60.0",
 		"@vscode/test-electron": "^2.5.2",
-		"html-pdf-node": "^1.0.8",
 		"typescript": "^4.5.4"
 	},
 	"dependencies": {
+		"chrome-launcher": "^1.2.0",
 		"jsdom": "^22.0.0",
 		"markdown-it": "^13.0.1",
 		"markdown-it-anchor": "^8.6.6",
-		"mime": "^3.0.0"
+		"mime": "^3.0.0",
+		"puppeteer-core": "^24.20.0"
 	},
-	"activationEvents": [
-		"onCommand:markdownToPdf.convert"
-	],
 	"contributes": {
 		"commands": [
 			{

@@ -1,10 +1,11 @@
+import puppeteer from 'puppeteer-core';
+import chromeLauncher from 'chrome-launcher';
 import * as fs from 'fs';
 import * as path from 'path';
 import MarkdownIt from 'markdown-it';
 import markdownItAnchor from 'markdown-it-anchor';
 import * as jsdom from 'jsdom';
 import mime from 'mime';
-import parser from "html-pdf-node";
 
 async function fileToBase64(filePath: string): Promise<string> {
 	const data = await fs.readFileSync(filePath);
@@ -139,6 +140,30 @@ async function loadFile(filePath: string, idMapping: Record<string, number> = {}
 	].join(`<div class="break-page"></div>`);
 }
 
+async function getChromePath(): Promise<string | undefined> {
+	const chrome = await chromeLauncher.Launcher.getInstallations();
+	return chrome[0];
+}
+
+async function generatePdf(content: string, pdfPath: string) {
+	const executablePath = await getChromePath();
+
+	const browser = await puppeteer.launch({
+		executablePath,
+		headless: true,
+	});
+
+	const page = await browser.newPage();
+	// await browser.close();
+	try {
+		await page.setContent(content, { waitUntil: 'networkidle0' });
+		await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
+		return pdfPath;
+	} finally {
+		await browser.close();
+	}
+}
+
 /**
  * Converts a Markdown file to a PDF file.
  *
@@ -154,12 +179,13 @@ async function loadFile(filePath: string, idMapping: Record<string, number> = {}
  * @throws If reading the Markdown file or generating the PDF fails.
  */
 export async function convert(mdPath: string, pdfPath: string): Promise<void> {
-	const pdfDir = path.dirname(pdfPath);
+	// const pdfDir = path.dirname(pdfPath);
 	const html = await loadFile(mdPath);
 	const finalHtml = createHtmlDocument(html, path.basename(mdPath));
-	fs.writeFileSync(path.join(pdfDir, `index.html`), finalHtml);
-	const buffer: any = await parser.generatePdf({
-		content: finalHtml
-	}, { format: 'A4' });
-	fs.writeFileSync(pdfPath, buffer);
+	await generatePdf(finalHtml, pdfPath)
+	// fs.writeFileSync(path.join(pdfDir, `index.html`), finalHtml);
+	// const buffer: any = await parser.generatePdf({
+	// 	content: finalHtml
+	// }, { format: 'A4' });
+	// fs.writeFileSync(pdfPath, buffer);
 }
