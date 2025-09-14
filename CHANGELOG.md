@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.0.6] - 2025-09-14
+### Added
+- Support triggering the command via right-click in the editor
+- Support triggering the command via right-click on files
+
 ## [0.0.1] - 2025-09-14
 ### Added
 - Initial release of **MarkdownMerger**.
