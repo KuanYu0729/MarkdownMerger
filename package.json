@@ -1,6 +1,6 @@
 {
 	"name": "vscode-markdown-merger",
-	"displayName": "Markdown → PDF (embed images & internal links)",
+	"displayName": "MarkdownMerger",
 	"description": "Convert Markdown to PDF with embedded images (base64) and internal links that scroll to headings.",
 	"repository": {
 		"type": "git",
