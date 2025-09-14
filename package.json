@@ -51,6 +51,20 @@
 				"command": "markdownToPdf.convert",
 				"title": "MarkdownMerger: Export to PDF"
 			}
-		]
+		],
+		"menus": {
+			"explorer/context": [
+				{
+					"command": "markdownToPdf.convert",
+					"when": "resourceExtname == .md"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "markdownToPdf.convert",
+					"when": "editorLangId == markdown"
+				}
+			]
+		}
 	}
 }
