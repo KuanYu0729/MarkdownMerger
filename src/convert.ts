@@ -5,11 +5,34 @@ import * as path from 'path';
 import MarkdownIt from 'markdown-it';
 import markdownItAnchor from 'markdown-it-anchor';
 import * as jsdom from 'jsdom';
-import mime from 'mime';
-
 async function fileToBase64(filePath: string): Promise<string> {
 	const data = await fs.readFileSync(filePath);
-	const mimeType = mime.getType(filePath) || 'application/octet-stream';
+	let mimeType = 'application/octet-stream';
+	const ext = path.extname(filePath).toLowerCase();
+	switch (ext) {
+		case '.jpg':
+		case '.jpeg':
+			mimeType = 'image/jpeg';
+			break;
+		case '.png':
+			mimeType = 'image/png';
+			break;
+		case '.gif':
+			mimeType = 'image/gif';
+			break;
+		case '.svg':
+			mimeType = 'image/svg+xml';
+			break;
+		case '.webp':
+			mimeType = 'image/webp';
+			break;
+		case '.bmp':
+			mimeType = 'image/bmp';
+			break;
+		case '.ico':
+			mimeType = 'image/x-icon';
+			break;
+	}
 	return `data:${mimeType};base64,${data.toString('base64')}`;
 }
 
