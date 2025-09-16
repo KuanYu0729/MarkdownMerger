@@ -6,7 +6,7 @@
 		"type": "git",
 		"url": "https://github.com/KuanYu0729/MarkdownMerger.git"
 	},
-	"version": "0.0.7",
+	"version": "0.0.8",
 	"engines": {
 		"vscode": "^1.90.0"
 	},
