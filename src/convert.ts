@@ -182,10 +182,5 @@ export async function convert(mdPath: string, pdfPath: string): Promise<void> {
 	// const pdfDir = path.dirname(pdfPath);
 	const html = await loadFile(mdPath);
 	const finalHtml = createHtmlDocument(html, path.basename(mdPath));
-	await generatePdf(finalHtml, pdfPath)
-	// fs.writeFileSync(path.join(pdfDir, `index.html`), finalHtml);
-	// const buffer: any = await parser.generatePdf({
-	// 	content: finalHtml
-	// }, { format: 'A4' });
-	// fs.writeFileSync(pdfPath, buffer);
+	await generatePdf(finalHtml, pdfPath);
 }

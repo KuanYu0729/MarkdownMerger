@@ -31,7 +31,14 @@ export function activate(context: vscode.ExtensionContext) {
 
 		try {
 			const pdfPath = getAvailablePdfPath(doc.uri.fsPath);
-			await convert(doc.uri.fsPath, pdfPath);
+			vscode.window.withProgress({
+				location: vscode.ProgressLocation.Notification,
+				title: "檔案處理中...",
+				cancellable: false
+			}, async function () {
+				await convert(doc.uri.fsPath, pdfPath);
+			});
+
 			const open = 'Open PDF';
 			const choice = await vscode.window.showInformationMessage(`Saved PDF: ${pdfPath}`, open);
 			if (choice === open) {
