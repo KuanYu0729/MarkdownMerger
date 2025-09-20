@@ -24,7 +24,7 @@ function createHtmlDocument(body: string, title: string) {
 		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 24px; }
 		img { max-width: 100%; height: auto; }
 		pre { background:#f6f8fa; padding:12px; overflow:auto }
-		code { background:#f3f3f3; padding:2px 4px; border-radius:4px }
+		code { background:yellow; font-size: 16px; padding:2px 4px; border-radius:4px }
 		a { color: #0366d6 }
 		.break-page {break-after: page; page-break-after: always;}
 		</style>
