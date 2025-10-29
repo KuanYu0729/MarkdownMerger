@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/) and
 this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [0.0.13] - 2025-10-29
+### Fixed
+- Fix the incorrect order in which the completion notification appears
+- Fix syntax highlighting issues when converting to PDF
+
 ## [0.0.12] - 2025-09-20
 ### Fixed
 - Update code block background color to yellow for better visibility
