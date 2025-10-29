@@ -14,6 +14,8 @@ async function fileToBase64(filePath: string): Promise<string> {
 }
 
 function createHtmlDocument(body: string, title: string) {
+	const jsContent = fs.readFileSync(path.join(__dirname, "./script/prism.js")).toString();
+	const cssContent = fs.readFileSync(path.join(__dirname, "./style/prism.css")).toString();
 	return `<!doctype html>
 		<html>
 		<head>
@@ -24,10 +26,14 @@ function createHtmlDocument(body: string, title: string) {
 		body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; padding: 24px; }
 		img { max-width: 100%; height: auto; }
 		pre { background:#f6f8fa; padding:12px; overflow:auto }
-		code { background:yellow; font-size: 16px; padding:2px 4px; border-radius:4px }
+		code { font-size: 16px; padding:2px 4px; border-radius:4px }
 		a { color: #0366d6 }
 		.break-page {break-after: page; page-break-after: always;}
+		${cssContent}
 		</style>
+		<script>
+			${jsContent}
+		</script>
 		</head>
 		<body>
 		${body}
@@ -156,8 +162,14 @@ async function generatePdf(content: string, pdfPath: string) {
 	const page = await browser.newPage();
 	// await browser.close();
 	try {
-		await page.setContent(content, { waitUntil: 'networkidle0' });
-		await page.pdf({ path: pdfPath, format: 'A4', printBackground: true });
+		await page.setContent(content, {
+			waitUntil: 'networkidle0'
+		});
+		await page.pdf({
+			path: pdfPath,
+			format: 'A4',
+			printBackground: true
+		});
 		return pdfPath;
 	} finally {
 		await browser.close();
