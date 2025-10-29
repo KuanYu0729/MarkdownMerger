@@ -31,7 +31,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 		try {
 			const pdfPath = getAvailablePdfPath(doc.uri.fsPath);
-			vscode.window.withProgress({
+			await vscode.window.withProgress({
 				location: vscode.ProgressLocation.Notification,
 				title: "檔案處理中...",
 				cancellable: false
